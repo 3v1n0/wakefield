@@ -1136,6 +1136,8 @@ seat_get_keyboard (struct wl_client    *client,
 
   if (keyboard->keymap_fd != -1)
     {
+      /* FIXME: Read repeat info from gsettings */
+      wl_keyboard_send_repeat_info (cr, 0, 0);
       wl_keyboard_send_keymap (cr,
                                WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
                                keyboard->keymap_fd,
