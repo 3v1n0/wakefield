@@ -54,9 +54,19 @@ data_source_destroy (struct wl_client *client, struct wl_resource *resource)
   wl_resource_destroy (resource);
 }
 
+static void
+data_source_set_actions (struct wl_client *client,
+                         struct wl_resource *source_resource,
+                         uint32_t dnd_actions)
+{
+  wl_resource_post_error (source_resource, 1,
+                          "data-source:: set_actions not implemented yet.");
+}
+
 static struct wl_data_source_interface data_source_implementation = {
   data_source_offer,
-  data_source_destroy
+  data_source_destroy,
+  data_source_set_actions,
 };
 
 static void
