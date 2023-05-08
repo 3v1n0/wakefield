@@ -540,6 +540,28 @@ wl_surface_finalize (struct wl_resource *resource)
   g_object_unref (surface);
 }
 
+static void
+wl_surface_damage_buffer (struct wl_client *client,
+                          struct wl_resource *resource,
+                          int32_t x,
+                          int32_t y,
+                          int32_t width,
+                          int32_t height)
+{
+  wl_resource_post_error (resource, 1,
+                          "xdg-surface::damage_buffer not implemented yet.");
+}
+
+static void
+wl_surface_offset (struct wl_client *client,
+                   struct wl_resource *resource,
+                   int32_t x,
+                   int32_t y)
+{
+   wl_resource_post_error (resource, 1,
+                           "xdg-surface::offset not implemented yet.");
+}
+
 static const struct wl_surface_interface surface_implementation = {
   wl_surface_destroy,
   wl_surface_attach,
@@ -549,7 +571,9 @@ static const struct wl_surface_interface surface_implementation = {
   wl_surface_set_input_region,
   wl_surface_commit,
   wl_surface_set_buffer_transform,
-  wl_surface_set_buffer_scale
+  wl_surface_set_buffer_scale,
+  wl_surface_damage_buffer,
+  wl_surface_offset,
 };
 
 struct wl_resource *
