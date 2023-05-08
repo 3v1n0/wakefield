@@ -24,7 +24,6 @@
 #include "config.h"
 
 #include <string.h>
-#include <sys/time.h>
 
 #include "wakefield-private.h"
 #include "xdg-shell-server-protocol.h"
@@ -195,14 +194,6 @@ cairo_format_for_wl_shm_format (enum wl_shm_format format)
     }
 }
 
-static uint32_t
-get_time (void)
-{
-  struct timeval tv;
-  gettimeofday (&tv, NULL);
-  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
-
 WakefieldCompositor *
 wakefield_surface_get_compositor (WakefieldSurface *surface)
 {
@@ -293,12 +284,11 @@ wakefield_surface_draw (struct wl_resource *surface_resource,
   /* Trigger frame callbacks. */
   {
     struct wl_resource *cr, *next;
-    /* XXX: Should we use the frame clock for this? */
-    uint32_t time = get_time ();
+    int64_t now = g_get_monotonic_time () / 1000;
 
     wl_resource_for_each_safe (cr, next, &surface->current.frame_callbacks)
       {
-        wl_callback_send_done (cr, time);
+        wl_callback_send_done (cr, now);
         wl_resource_destroy (cr);
       }
 
