@@ -1312,7 +1312,8 @@ wakefield_keyboard_init (WakefieldCompositor *compositor,
 static const struct wl_seat_interface seat_interface = {
   seat_get_pointer,
   seat_get_keyboard, /* get_keyboard */
-  NULL, /* get_touch */
+  .get_touch = NULL,
+  .release = NULL,
 };
 
 static void
