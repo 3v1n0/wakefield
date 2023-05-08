@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Endless OS Foundation LLC
+ * Copyright (C) 2023 Canonical Ltd
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
@@ -19,6 +20,7 @@
  * Written by:
  *     Jasper St. Pierre <jstpierre@mecheye.net>
  *     Alexander Larsson <alexl@redhat.com>
+ *     Marco Trevisan <marco.trevisan@canonical.com>
  */
 
 #include "config.h"
@@ -36,6 +38,10 @@
 #define WAKEFIELD_SURFACE_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  WAKEFIELD_TYPE_SURFACE, WakefieldSurfaceClass))
 
 typedef struct _WakefieldSurfaceClass WakefieldSurfaceClass;
+
+static void xdg_surface_get_toplevel (struct wl_client *client,
+                                      struct wl_resource *resource,
+                                      uint32_t id);
 
 struct _WakefieldSurfaceClass
 {
@@ -71,6 +77,7 @@ struct _WakefieldSurface
   WakefieldSurfaceRole role;
 
   struct WakefieldXdgSurface *xdg_surface;
+  struct WakefieldXdgToplevel *xdg_toplevel;
   struct WakefieldXdgPopup *xdg_popup;
 
   cairo_region_t *damage;
@@ -79,6 +86,14 @@ struct _WakefieldSurface
 };
 
 struct WakefieldXdgSurface
+{
+  WakefieldSurface *surface;
+
+  struct wl_resource *resource;
+  GdkWindow *window;
+};
+
+struct WakefieldXdgToplevel
 {
   WakefieldSurface *surface;
 
@@ -112,12 +127,26 @@ wakefield_surface_get_xdg_surface  (struct wl_resource  *surface_resource)
 }
 
 struct wl_resource *
-wakefield_surface_get_xdg_popup  (struct wl_resource  *surface_resource)
+wakefield_xdg_surface_get_xdg_toplevel (struct wl_resource *xdg_surface_resource)
 {
-  WakefieldSurface *surface = wl_resource_get_user_data (surface_resource);
+  WakefieldSurface *surface =
+    wakefield_xdg_surface_get_surface (xdg_surface_resource);
 
-  if (surface->xdg_popup)
+  if (surface && surface->xdg_toplevel)
+    return surface->xdg_toplevel->resource;
+
+  return NULL;
+}
+
+struct wl_resource *
+wakefield_xdg_surface_get_xdg_popup  (struct wl_resource *xdg_surface_resource)
+{
+  WakefieldSurface *surface =
+    wakefield_xdg_surface_get_surface (xdg_surface_resource);
+
+  if (surface && surface->xdg_popup)
     return surface->xdg_popup->resource;
+
   return NULL;
 }
 
@@ -541,6 +570,9 @@ wl_surface_finalize (struct wl_resource *resource)
   if (surface->xdg_surface)
     surface->xdg_surface->surface = NULL;
 
+  if (surface->xdg_toplevel)
+    surface->xdg_toplevel->surface = NULL;
+
   if (surface->xdg_popup)
     surface->xdg_popup->surface = NULL;
 
@@ -635,53 +667,14 @@ xdg_surface_destroy (struct wl_client *client,
 }
 
 static void
-xdg_surface_set_parent (struct wl_client *client,
-                        struct wl_resource *resource,
-                        struct wl_resource *parent_resource)
+xdg_surface_get_popup (struct wl_client *client,
+                       struct wl_resource *resource,
+                       uint32_t id,
+                       struct wl_resource *parent,
+                       struct wl_resource *positioner)
 {
-}
-
-static void
-xdg_surface_set_app_id (struct wl_client *client,
-                        struct wl_resource *resource,
-                        const char *app_id)
-{
-}
-
-static void
-xdg_surface_show_window_menu (struct wl_client *client,
-                              struct wl_resource *surface_resource,
-                              struct wl_resource *seat_resource,
-                              uint32_t serial,
-                              int32_t x,
-                              int32_t y)
-{
-}
-
-static void
-xdg_surface_set_title (struct wl_client *client,
-                       struct wl_resource *resource, const char *title)
-{
-}
-
-static void
-xdg_surface_move (struct wl_client *client, struct wl_resource *resource,
-                  struct wl_resource *seat_resource, uint32_t serial)
-{
-}
-
-static void
-xdg_surface_resize (struct wl_client *client, struct wl_resource *resource,
-                    struct wl_resource *seat_resource, uint32_t serial,
-                    uint32_t edges)
-{
-}
-
-static void
-xdg_surface_ack_configure (struct wl_client *client,
-                           struct wl_resource *resource,
-                           uint32_t serial)
-{
+  wl_resource_post_error (resource, 1,
+                          "xdg-surface::get_popup not implemented yet.");
 }
 
 static void
@@ -695,60 +688,205 @@ xdg_surface_set_window_geometry (struct wl_client *client,
 }
 
 static void
-xdg_surface_set_maximized (struct wl_client *client,
-                           struct wl_resource *resource)
+xdg_surface_ack_configure (struct wl_client *client,
+                           struct wl_resource *resource,
+                           uint32_t serial)
+{
+  // g_print("ACKIng configure %u\n", serial);
+}
+
+static const struct xdg_surface_interface xdg_surface_implementation = {
+  .destroy = xdg_surface_destroy,
+  .get_toplevel = xdg_surface_get_toplevel,
+  .get_popup = xdg_surface_get_popup,
+  .set_window_geometry = xdg_surface_set_window_geometry,
+  .ack_configure = xdg_surface_ack_configure,
+};
+
+static void
+xdg_toplevel_finalize (struct wl_resource *xdg_resource)
+{
+  struct WakefieldXdgToplevel *xdg_toplevel = wl_resource_get_user_data (xdg_resource);
+
+  if (xdg_toplevel->surface)
+    xdg_toplevel->surface->xdg_toplevel = NULL;
+
+  g_free (xdg_toplevel);
+}
+
+static void
+xdg_toplevel_destroy (struct wl_client *client,
+                     struct wl_resource *resource)
+{
+  wl_resource_destroy (resource);
+}
+
+static void
+xdg_toplevel_set_parent (struct wl_client *client,
+                         struct wl_resource *resource,
+                         struct wl_resource *parent_resource)
 {
 }
 
 static void
-xdg_surface_unset_maximized (struct wl_client *client,
-                             struct wl_resource *resource)
+xdg_toplevel_set_app_id (struct wl_client *client,
+                        struct wl_resource *resource,
+                        const char *app_id)
 {
 }
 
 static void
-xdg_surface_set_fullscreen (struct wl_client *client,
-                            struct wl_resource *resource,
-                            struct wl_resource *output_resource)
+xdg_toplevel_show_window_menu (struct wl_client *client,
+                               struct wl_resource *surface_resource,
+                               struct wl_resource *seat_resource,
+                               uint32_t serial,
+                               int32_t x,
+                               int32_t y)
 {
 }
 
 static void
-xdg_surface_unset_fullscreen (struct wl_client *client,
+xdg_toplevel_set_title (struct wl_client *client,
+                        struct wl_resource *resource, const char *title)
+{
+}
+
+static void
+xdg_toplevel_move (struct wl_client *client, struct wl_resource *resource,
+                   struct wl_resource *seat_resource, uint32_t serial)
+{
+}
+
+static void
+xdg_toplevel_resize (struct wl_client *client, struct wl_resource *resource,
+                     struct wl_resource *seat_resource, uint32_t serial,
+                     uint32_t edges)
+{
+}
+
+static void
+xdg_toplevel_set_maximized (struct wl_client *client,
+                            struct wl_resource *resource)
+{
+}
+
+static void
+xdg_toplevel_unset_maximized (struct wl_client *client,
                               struct wl_resource *resource)
 {
 }
 
 static void
-xdg_surface_set_minimized (struct wl_client *client,
-                           struct wl_resource *resource)
+xdg_toplevel_set_fullscreen (struct wl_client *client,
+                             struct wl_resource *resource,
+                             struct wl_resource *output_resource)
 {
 }
 
-static const struct xdg_surface_interface xdg_surface_implementation = {
-  xdg_surface_destroy,
-  xdg_surface_set_parent,
-  xdg_surface_set_title,
-  xdg_surface_set_app_id,
-  xdg_surface_show_window_menu,
-  xdg_surface_move,
-  xdg_surface_resize,
-  xdg_surface_ack_configure,
-  xdg_surface_set_window_geometry,
-  xdg_surface_set_maximized,
-  xdg_surface_unset_maximized,
-  xdg_surface_set_fullscreen,
-  xdg_surface_unset_fullscreen,
-  xdg_surface_set_minimized,
+static void
+xdg_toplevel_unset_fullscreen (struct wl_client *client,
+                               struct wl_resource *resource)
+{
+}
+
+static void
+xdg_toplevel_set_minimized (struct wl_client *client,
+                            struct wl_resource *resource)
+{
+}
+
+static void
+xdg_toplevel_set_max_size (struct wl_client *client,
+                           struct wl_resource *resource,
+                           int32_t width,
+                           int32_t height)
+{
+}
+
+static void
+xdg_toplevel_set_min_size (struct wl_client *client,
+                           struct wl_resource *resource,
+                           int32_t width,
+                           int32_t height)
+{
+}
+
+static const struct xdg_toplevel_interface xdg_toplevel_implementation = {
+  .destroy = xdg_toplevel_destroy,
+  .set_parent = xdg_toplevel_set_parent,
+  .set_title = xdg_toplevel_set_title,
+  .set_app_id = xdg_toplevel_set_app_id,
+  .show_window_menu = xdg_toplevel_show_window_menu,
+  .move = xdg_toplevel_move,
+  .resize = xdg_toplevel_resize,
+  .set_max_size = xdg_toplevel_set_max_size,
+  .set_min_size = xdg_toplevel_set_min_size,
+  .set_maximized = xdg_toplevel_set_maximized,
+  .unset_maximized = xdg_toplevel_unset_maximized,
+  .set_fullscreen = xdg_toplevel_set_fullscreen,
+  .unset_fullscreen = xdg_toplevel_unset_fullscreen,
+  .set_minimized = xdg_toplevel_set_minimized,
 };
 
-struct wl_resource *
+static void
+xdg_surface_get_toplevel (struct wl_client   *client,
+                          struct wl_resource *resource,
+                          uint32_t id)
+{
+  struct WakefieldXdgToplevel *xdg_toplevel = g_new0 (struct WakefieldXdgToplevel, 1);
+  struct WakefieldXdgSurface *xdg_surface = wl_resource_get_user_data (resource);
+  WakefieldSurface *surface;
+
+  g_assert (wl_resource_instance_of (resource, &xdg_surface_interface,
+                                     &xdg_surface_implementation));
+
+  surface = xdg_surface->surface;
+  xdg_toplevel->surface = surface;
+
+  g_assert (surface->xdg_toplevel == NULL);
+  surface->xdg_toplevel = xdg_toplevel;
+
+  xdg_toplevel->resource = wl_resource_create (client, &xdg_toplevel_interface,
+                                               wl_resource_get_version (resource),
+                                               id);
+
+  if (xdg_toplevel->resource == NULL)
+    {
+      g_free (xdg_toplevel);
+      surface->xdg_toplevel = NULL;
+      wl_resource_post_no_memory (resource);
+      return;
+    }
+
+  wakefield_surface_set_role (xdg_surface->surface->resource,
+                              WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL);
+
+  wl_resource_set_implementation (xdg_toplevel->resource,
+                                  &xdg_toplevel_implementation, xdg_toplevel,
+                                  xdg_toplevel_finalize);
+}
+
+WakefieldSurface *
 wakefield_xdg_surface_get_surface (struct wl_resource *xdg_surface_resource)
 {
-  struct WakefieldXdgSurface *xdg_surface = wl_resource_get_user_data (xdg_surface_resource);
+  struct WakefieldXdgSurface *xdg_surface =
+    wl_resource_get_user_data (xdg_surface_resource);
 
-  if (xdg_surface->surface)
-    return xdg_surface->surface->resource;
+  g_return_val_if_fail (
+    wl_resource_instance_of (xdg_surface_resource, &xdg_surface_interface,
+                             &xdg_surface_implementation), NULL);
+
+  return xdg_surface->surface;
+}
+
+struct wl_resource *
+wakefield_xdg_surface_get_surface_resource (struct wl_resource *xdg_surface_resource)
+{
+  WakefieldSurface *surface =
+    wakefield_xdg_surface_get_surface (xdg_surface_resource);
+
+  if (surface)
+    return surface->resource;
 
   return NULL;
 }
@@ -834,9 +972,6 @@ wakefield_xdg_surface_new (struct wl_client *client,
 {
   WakefieldSurface *surface = wl_resource_get_user_data (surface_resource);
   struct WakefieldXdgSurface *xdg_surface;
-
-  wakefield_surface_set_role (surface_resource,
-                              WAKEFIELD_SURFACE_ROLE_XDG_SURFACE);
 
   xdg_surface = g_slice_new0 (struct WakefieldXdgSurface);
   xdg_surface->surface = surface;
@@ -1023,7 +1158,7 @@ wakefield_xdg_popup_new (WakefieldCompositor *compositor,
   GdkVisual *rgba_visual = gdk_screen_get_rgba_visual (screen);
 
   wakefield_surface_set_role (surface_resource,
-                              WAKEFIELD_SURFACE_ROLE_XDG_SURFACE);
+                              WAKEFIELD_SURFACE_ROLE_XDG_POPUP);
 
   xdg_popup = g_slice_new0 (struct WakefieldXdgPopup);
   xdg_popup->surface = surface;

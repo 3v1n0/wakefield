@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Endless OS Foundation LLC
+ * Copyright (C) 2023 Canonical Ltd
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -19,6 +20,7 @@
  * Written by:
  *     Jasper St. Pierre <jstpierre@mecheye.net>
  *     Alexander Larsson <alexl@redhat.com>
+ *     Marco Trevisan <marco.trevisan@canonical.com>
  */
 
 #include "config.h"
@@ -257,23 +259,37 @@ send_xdg_configure_request (WakefieldCompositor *compositor,
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
   GtkAllocation allocation;
+  struct wl_resource *xdg_toplevel;
   struct wl_array states;
-  uint32_t serial = wl_display_next_serial (priv->wl_display);
   uint32_t *s;
+
+  xdg_toplevel = wakefield_xdg_surface_get_xdg_toplevel (xdg_surface);
+  if (!xdg_toplevel)
+    return;
 
   gtk_widget_get_allocation (GTK_WIDGET (compositor), &allocation);
 
+  if (wl_resource_get_version (xdg_toplevel) >=
+      XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION)
+    {
+      xdg_toplevel_send_configure_bounds (xdg_toplevel,
+                                          allocation.width, allocation.height);
+    }
+
   wl_array_init(&states);
   s = wl_array_add(&states, sizeof *s);
-  *s = XDG_SURFACE_STATE_FULLSCREEN;
+  *s = XDG_TOPLEVEL_STATE_FULLSCREEN;
   if ((gtk_widget_get_state_flags (GTK_WIDGET (compositor)) & GTK_STATE_FLAG_BACKDROP) == 0)
     {
       s = wl_array_add(&states, sizeof *s);
-      *s = XDG_SURFACE_STATE_ACTIVATED;
+      *s = XDG_TOPLEVEL_STATE_ACTIVATED;
     }
-  xdg_surface_send_configure (xdg_surface, allocation.width, allocation.height,
-                              &states, serial);
+  xdg_toplevel_send_configure (xdg_toplevel, allocation.width, allocation.height,
+                               &states);
   wl_array_release(&states);
+
+  xdg_surface_send_configure (xdg_surface,
+                              wl_display_next_serial (priv->wl_display));
 }
 
 static void
@@ -330,7 +346,7 @@ wakefield_compositor_draw (GtkWidget *widget,
 
   wl_resource_for_each (xdg_surface_resource, &priv->xdg_surfaces)
     {
-      struct wl_resource *surface_resource = wakefield_xdg_surface_get_surface (xdg_surface_resource);
+      struct wl_resource *surface_resource = wakefield_xdg_surface_get_surface_resource (xdg_surface_resource);
       if (surface_resource)
         wakefield_surface_draw (surface_resource, cr);
     }
@@ -737,7 +753,7 @@ wakefield_compositor_get_xdg_surface_for_window (WakefieldCompositor *compositor
   wl_resource_for_each (xdg_surface_resource, &priv->xdg_surfaces)
     {
       if (window == wakefield_xdg_surface_get_window (xdg_surface_resource))
-        return wakefield_xdg_surface_get_surface (xdg_surface_resource);
+        return wakefield_xdg_surface_get_surface_resource (xdg_surface_resource);
     }
 
   return NULL;
@@ -752,7 +768,7 @@ wakefield_compositor_get_topmost_surface (WakefieldCompositor *compositor)
   wl_resource_for_each_reverse (xdg_surface_resource, &priv->xdg_surfaces)
     {
       struct wl_resource *surface_resource;
-      surface_resource = wakefield_xdg_surface_get_surface (xdg_surface_resource);
+      surface_resource = wakefield_xdg_surface_get_surface_resource (xdg_surface_resource);
       if (surface_resource != NULL && wakefield_surface_is_mapped (surface_resource))
         return surface_resource;
     }
@@ -1053,7 +1069,7 @@ pointer_set_cursor (struct wl_client *client,
         case WAKEFIELD_SURFACE_ROLE_NONE:
         case WAKEFIELD_SURFACE_ROLE_POINTER_CURSOR:
           break;
-        case WAKEFIELD_SURFACE_ROLE_XDG_SURFACE:
+        case WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL:
         case WAKEFIELD_SURFACE_ROLE_XDG_POPUP:
           wl_resource_post_error (resource, WL_POINTER_ERROR_ROLE,
                                   "This wl_surface already has a role");
@@ -1545,19 +1561,6 @@ xdg_shell_destroy (struct wl_client *client,
 }
 
 static void
-xdg_use_unstable_version (struct wl_client *client,
-                          struct wl_resource *resource,
-                          int32_t version)
-{
-  if (version > 5)
-    {
-      wl_resource_post_error (resource, 1,
-                              "xdg-shell:: version not implemented yet.");
-      return;
-    }
-}
-
-static void
 xdg_get_xdg_surface (struct wl_client *client,
                      struct wl_resource *shell_resource,
                      uint32_t id,
@@ -1579,7 +1582,7 @@ xdg_get_xdg_surface (struct wl_client *client,
   role = wakefield_surface_get_role (surface_resource);
   if (role)
     {
-      wl_resource_post_error (shell_resource, XDG_SHELL_ERROR_ROLE,
+      wl_resource_post_error (shell_resource, XDG_WM_BASE_ERROR_ROLE,
                               "This wl_surface already has a role");
       return;
     }
@@ -1620,7 +1623,7 @@ xdg_get_xdg_popup (struct wl_client *client,
   role = wakefield_surface_get_role (surface_resource);
   if (role)
     {
-      wl_resource_post_error (shell_resource, XDG_SHELL_ERROR_ROLE,
+      wl_resource_post_error (shell_resource, XDG_WM_BASE_ERROR_ROLE,
                               "This wl_surface already has a role");
       return;
     }
@@ -1635,11 +1638,11 @@ xdg_get_xdg_popup (struct wl_client *client,
 
   parent_role = wakefield_surface_get_role (parent_resource);
 
-  if (parent_role != WAKEFIELD_SURFACE_ROLE_XDG_SURFACE &&
+  if (parent_role != WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL &&
       parent_role != WAKEFIELD_SURFACE_ROLE_XDG_POPUP)
     {
       wl_resource_post_error (shell_resource,
-                              XDG_POPUP_ERROR_INVALID_PARENT,
+                              XDG_WM_BASE_ERROR_INVALID_POPUP_PARENT,
                               "xdg_popup parent was invalid");
       return;
     }
@@ -1647,10 +1650,10 @@ xdg_get_xdg_popup (struct wl_client *client,
   if (!wl_list_empty (&priv->xdg_popups))
     {
       struct wl_resource *top_xdg_popup = wl_resource_from_link (priv->xdg_popups.next);
-      if (parent_resource != wakefield_xdg_surface_get_surface (top_xdg_popup))
+      if (parent_resource != wakefield_xdg_surface_get_surface_resource (top_xdg_popup))
         {
           wl_resource_post_error (shell_resource,
-                                  XDG_POPUP_ERROR_NOT_THE_TOPMOST_POPUP,
+                                  XDG_WM_BASE_ERROR_NOT_THE_TOPMOST_POPUP,
                                   "xdg_popup was not created on the "
                                   "topmost popup");
           return;
@@ -1694,24 +1697,35 @@ xdg_pong (struct wl_client *client,
                           "xdg-shell:: pong not implemented yet.");
 }
 
-static const struct xdg_shell_interface xdg_implementation = {
+static void
+xdg_shell_create_positioner (struct wl_client *client,
+                             struct wl_resource *resource,
+                             uint32_t id)
+{
+  wl_resource_post_error (resource, 1,
+                          "xdg-shell::create_positioner not implemented yet.");
+}
+
+static const struct xdg_wm_base_interface xdg_implementation = {
   xdg_shell_destroy,
-  xdg_use_unstable_version,
+  xdg_shell_create_positioner,
   xdg_get_xdg_surface,
-  xdg_get_xdg_popup,
   xdg_pong
 };
 
-#define XDG_SHELL_VERSION 1
+#define XDG_SHELL_VERSION 5
 
 static void
-bind_xdg_shell(struct wl_client *client, void *data, uint32_t version, uint32_t id)
+bind_xdg_shell (struct wl_client *client,
+                void *data,
+                uint32_t version,
+                uint32_t id)
 {
   WakefieldCompositor *compositor = data;
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
   struct wl_resource *cr;
 
-  cr = wl_resource_create (client,  &xdg_shell_interface, XDG_SHELL_VERSION, id);
+  cr = wl_resource_create (client, &xdg_wm_base_interface, version, id);
   wl_resource_set_implementation (cr, &xdg_implementation, compositor, unbind_resource);
   wl_list_insert (&priv->shell_resources, wl_resource_get_link (cr));
 }
@@ -1753,7 +1767,7 @@ wakefield_compositor_init (WakefieldCompositor *compositor)
   wl_global_create (priv->wl_display, &wl_compositor_interface,
                     WL_COMPOSITOR_VERSION, compositor, bind_compositor);
 
-  wl_global_create (priv->wl_display, &xdg_shell_interface,
+  wl_global_create (priv->wl_display, &xdg_wm_base_interface,
                     XDG_SHELL_VERSION, compositor, bind_xdg_shell);
   wl_list_init (&priv->shell_resources);
 

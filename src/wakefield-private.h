@@ -50,7 +50,7 @@ void                wakefield_compositor_send_motion            (WakefieldCompos
 
 typedef enum {
   WAKEFIELD_SURFACE_ROLE_NONE,
-  WAKEFIELD_SURFACE_ROLE_XDG_SURFACE,
+  WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL,
   WAKEFIELD_SURFACE_ROLE_XDG_POPUP,
   WAKEFIELD_SURFACE_ROLE_POINTER_CURSOR,
 } WakefieldSurfaceRole;
@@ -62,7 +62,6 @@ struct wl_resource * wakefield_surface_new              (WakefieldCompositor *co
 void                 wakefield_surface_draw             (struct wl_resource  *surface_resource,
                                                          cairo_t             *cr);
 struct wl_resource * wakefield_surface_get_xdg_surface  (struct wl_resource  *surface_resource);
-struct wl_resource * wakefield_surface_get_xdg_popup    (struct wl_resource  *surface_resource);
 WakefieldSurfaceRole wakefield_surface_get_role         (struct wl_resource  *surface_resource);
 void                 wakefield_surface_set_role         (struct wl_resource *surface_resource,
                                                          WakefieldSurfaceRole role);
@@ -79,7 +78,10 @@ struct wl_resource *wakefield_xdg_surface_new (struct wl_client   *client,
                                                uint32_t            id,
                                                struct wl_resource *surface_resource);
 
-struct wl_resource *wakefield_xdg_surface_get_surface (struct wl_resource *xdg_surface_resource);
+WakefieldSurface   *wakefield_xdg_surface_get_surface (struct wl_resource *xdg_surface_resource);
+struct wl_resource *wakefield_xdg_surface_get_surface_resource (struct wl_resource *xdg_surface_resource);
+struct wl_resource *wakefield_xdg_surface_get_xdg_popup (struct wl_resource  *xdg_surface_resource);
+struct wl_resource *wakefield_xdg_surface_get_xdg_toplevel (struct wl_resource  *xdg_surface_resource);
 void                wakefield_xdg_surface_realize (struct wl_resource *xdg_surface_resource,
                                                    GdkWindow *parent);
 void                wakefield_xdg_surface_unrealize (struct wl_resource *xdg_surface_resource);
