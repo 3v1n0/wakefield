@@ -6,6 +6,10 @@ project('wakefield', 'c',
                    ],
 )
 
+add_project_arguments(
+  '-Wno-unused-parameter',
+  language: 'c',
+)
 
 config_h = configuration_data()
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
