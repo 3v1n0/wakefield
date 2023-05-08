@@ -1333,7 +1333,9 @@ bind_seat (struct wl_client *client,
   cr = wl_resource_create (client, &wl_seat_interface, version, id);
   wl_resource_set_implementation (cr, &seat_interface, seat, wl_seat_destructor);
   wl_seat_send_capabilities (cr, WL_SEAT_CAPABILITY_POINTER | WL_SEAT_CAPABILITY_KEYBOARD);
-  wl_seat_send_name (cr, "seat0");
+
+  if (version >= WL_SEAT_NAME_SINCE_VERSION)
+    wl_seat_send_name (cr, "seat0");
 }
 
 static void
