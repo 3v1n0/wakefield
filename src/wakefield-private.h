@@ -32,6 +32,8 @@ void                wakefield_compositor_surface_unmapped       (WakefieldCompos
                                                                  struct wl_resource  *surface);
 void                wakefield_compositor_surface_mapped         (WakefieldCompositor *compositor,
                                                                  struct wl_resource  *surface);
+void                wakefield_compositor_send_configure         (WakefieldCompositor *compositor,
+                                                                 struct wl_resource  *surface);
 void                wakefield_compositor_send_enter             (WakefieldCompositor *compositor,
                                                                  struct wl_resource  *surface,
                                                                  GdkEventCrossing     *event);

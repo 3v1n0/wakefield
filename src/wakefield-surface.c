@@ -864,6 +864,9 @@ xdg_surface_get_toplevel (struct wl_client   *client,
   wl_resource_set_implementation (xdg_toplevel->resource,
                                   &xdg_toplevel_implementation, xdg_toplevel,
                                   xdg_toplevel_finalize);
+
+  wakefield_compositor_send_configure (
+    wakefield_surface_get_compositor (surface), xdg_surface->resource);
 }
 
 WakefieldSurface *

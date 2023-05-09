@@ -1516,6 +1516,13 @@ wakefield_compositor_surface_unmapped (WakefieldCompositor *compositor,
 }
 
 void
+wakefield_compositor_send_configure (WakefieldCompositor *compositor,
+                                     struct wl_resource  *surface)
+{
+  send_xdg_configure_request (compositor, surface);
+}
+
+void
 wakefield_compositor_surface_mapped (WakefieldCompositor *compositor,
                                      struct wl_resource  *surface)
 {
