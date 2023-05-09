@@ -247,7 +247,7 @@ refresh_output (WakefieldCompositor *compositor,
                        WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED,
                        allocation.width,
                        allocation.height,
-                       60);
+                       60 * 1000);
   wl_output_send_done (output);
 }
 
