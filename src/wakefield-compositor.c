@@ -1523,7 +1523,7 @@ wl_compositor_create_surface (struct wl_client *client,
 }
 
 
-const static struct wl_compositor_interface compositor_interface = {
+static const struct wl_compositor_interface compositor_interface = {
   wl_compositor_create_surface,
   wl_compositor_create_region
 };
