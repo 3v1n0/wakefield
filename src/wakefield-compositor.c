@@ -37,6 +37,7 @@
 #include "wakefield-private.h"
 #include "xdg-shell-server-protocol.h"
 
+#include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon.h>
 
 #if defined(GDK_WINDOWING_X11)
@@ -392,16 +393,18 @@ send_leave (WakefieldCompositor *compositor, struct wl_resource  *surface)
 }
 
 static uint32_t
-convert_gdk_button_to_libinput (int gdk_button)
+convert_gdk_button_to_linux_input (int gdk_button)
 {
  switch (gdk_button)
    {
-   case 3:
-     return 273;
-   case 2:
-     return 274;
+   case GDK_BUTTON_PRIMARY:
+     return BTN_LEFT;
+   case GDK_BUTTON_MIDDLE:
+     return BTN_MIDDLE;
+   case GDK_BUTTON_SECONDARY:
+     return BTN_RIGHT;
    default:
-     return gdk_button + 271;
+     return gdk_button + BTN_MOUSE;
    }
 }
 
@@ -473,7 +476,7 @@ wakefield_compositor_send_button (WakefieldCompositor *compositor,
   if (event->type == GDK_2BUTTON_PRESS || event->type == GDK_3BUTTON_PRESS)
     return;
 
-  button = convert_gdk_button_to_libinput (event->button);
+  button = convert_gdk_button_to_linux_input (event->button);
 
   if (event->type == GDK_BUTTON_PRESS)
     {

@@ -6,10 +6,22 @@ project('wakefield', 'c',
                    ],
 )
 
+cc = meson.get_compiler('c')
+
 add_project_arguments(
   '-Wno-unused-parameter',
   language: 'c',
 )
+
+required_headers = [
+  'linux/input-event-codes.h',
+]
+
+foreach header: required_headers
+  cc.check_header(header,
+    required: true,
+  )
+endforeach
 
 config_h = configuration_data()
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
