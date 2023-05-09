@@ -30,25 +30,13 @@
 #include "wakefield-private.h"
 #include "xdg-shell-server-protocol.h"
 
-#define WAKEFIELD_TYPE_SURFACE            (wakefield_surface_get_type ())
-#define WAKEFIELD_SURFACE(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), WAKEFIELD_TYPE_SURFACE, WakefieldSurface))
-#define WAKEFIELD_SURFACE_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  WAKEFIELD_TYPE_SURFACE, WakefieldSurfaceClass))
-#define WAKEFIELD_IS_SURFACE(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), WAKEFIELD_TYPE_SURFACE))
-#define WAKEFIELD_IS_SURFACE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  WAKEFIELD_TYPE_SURFACE))
-#define WAKEFIELD_SURFACE_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  WAKEFIELD_TYPE_SURFACE, WakefieldSurfaceClass))
+#define WAKEFIELD_TYPE_SURFACE (wakefield_surface_get_type ())
 
-typedef struct _WakefieldSurfaceClass WakefieldSurfaceClass;
+G_DECLARE_FINAL_TYPE (WakefieldSurface, wakefield_surface, WAKEFIELD, SURFACE, GObject);
 
 static void xdg_surface_get_toplevel (struct wl_client *client,
                                       struct wl_resource *resource,
                                       uint32_t id);
-
-struct _WakefieldSurfaceClass
-{
-  GObjectClass parent_class;
-};
-
-GType wakefield_surface_get_type (void) G_GNUC_CONST;
 
 enum {
   COMMITTED,
@@ -114,7 +102,7 @@ struct WakefieldXdgPopup
   struct wl_resource *resource;
 };
 
-G_DEFINE_TYPE (WakefieldSurface, wakefield_surface, G_TYPE_OBJECT);
+G_DEFINE_FINAL_TYPE (WakefieldSurface, wakefield_surface, G_TYPE_OBJECT);
 
 typedef struct wl_shm_buffer WlShmBufferLocker;
 static WlShmBufferLocker *

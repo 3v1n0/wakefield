@@ -20,6 +20,7 @@ wakefield_headers = [
 ]
 
 wakefield_deps = [
+  dependency('glib-2.0', version: glib_req),
   dependency('gtk+-3.0'),
   dependency('wayland-server'),
   dependency('wayland-client'),

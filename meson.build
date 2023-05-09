@@ -6,6 +6,8 @@ project('wakefield', 'c',
                    ],
 )
 
+glib_req = '>= 2.44'
+
 cc = meson.get_compiler('c')
 
 add_project_arguments(

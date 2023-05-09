@@ -24,27 +24,15 @@
 
 #include <gtk/gtk.h>
 
-#define WAKEFIELD_TYPE_COMPOSITOR            (wakefield_compositor_get_type ())
-#define WAKEFIELD_COMPOSITOR(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), WAKEFIELD_TYPE_COMPOSITOR, WakefieldCompositor))
-#define WAKEFIELD_COMPOSITOR_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  WAKEFIELD_TYPE_COMPOSITOR, WakefieldCompositorClass))
-#define WAKEFIELD_IS_COMPOSITOR(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), WAKEFIELD_TYPE_COMPOSITOR))
-#define WAKEFIELD_IS_COMPOSITOR_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  WAKEFIELD_TYPE_COMPOSITOR))
-#define WAKEFIELD_COMPOSITOR_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  WAKEFIELD_TYPE_COMPOSITOR, WakefieldCompositorClass))
+#define WAKEFIELD_TYPE_COMPOSITOR (wakefield_compositor_get_type ())
 
-typedef struct _WakefieldCompositor        WakefieldCompositor;
-typedef struct _WakefieldCompositorClass   WakefieldCompositorClass;
-
-struct _WakefieldCompositor
-{
-  GtkWidget parent;
-};
+G_DECLARE_DERIVABLE_TYPE (WakefieldCompositor, wakefield_compositor,
+                          WAKEFIELD, COMPOSITOR, GtkWidget);
 
 struct _WakefieldCompositorClass
 {
   GtkWidgetClass parent_class;
 };
-
-GType wakefield_compositor_get_type (void) G_GNUC_CONST;
 
 WakefieldCompositor *wakefield_compositor_new              (void);
 const char *         wakefield_compositor_add_socket_auto  (WakefieldCompositor *compositor,

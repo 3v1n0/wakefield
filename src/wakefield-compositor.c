@@ -122,7 +122,7 @@ struct WakefieldRegion
   cairo_region_t *region;
 };
 
-struct _WakefieldCompositorPrivate
+typedef struct _WakefieldCompositorPrivate
 {
   GdkWindow *event_window;
   GSource *wayland_source;
@@ -135,8 +135,7 @@ struct _WakefieldCompositorPrivate
   struct WakefieldSeat seat;
   struct WakefieldOutput output;
   struct WakefieldDataDevice *data_device;
-};
-typedef struct _WakefieldCompositorPrivate WakefieldCompositorPrivate;
+} WakefieldCompositorPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (WakefieldCompositor, wakefield_compositor, GTK_TYPE_WIDGET);
 
