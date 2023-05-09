@@ -175,8 +175,10 @@ wakefield_surface_get_current_size (WakefieldSurface *surface,
   shm_buffer = wl_shm_buffer_get (surface->current.buffer);
   if (shm_buffer)
     {
+      wl_shm_buffer_begin_access (shm_buffer);
       *width = wl_shm_buffer_get_width (shm_buffer) / surface->current.scale;
       *height = wl_shm_buffer_get_height (shm_buffer) / surface->current.scale;
+      wl_shm_buffer_end_access (shm_buffer);
     }
 }
 
@@ -215,8 +217,12 @@ wakefield_surface_create_cairo_surface (WakefieldSurface *surface,
   shm_buffer = wl_shm_buffer_get (surface->current.buffer);
   if (shm_buffer)
     {
-      uint8_t *shm_pixels = wl_shm_buffer_get_data (shm_buffer);
-      cairo_format_t format =
+      cairo_format_t format;
+      uint8_t *shm_pixels;
+
+      wl_shm_buffer_begin_access (shm_buffer);
+      shm_pixels = wl_shm_buffer_get_data (shm_buffer);
+      format =
         cairo_format_for_wl_shm_format (wl_shm_buffer_get_format (shm_buffer));
       int width = wl_shm_buffer_get_width (shm_buffer);
       int height = wl_shm_buffer_get_height (shm_buffer);
@@ -233,7 +239,6 @@ wakefield_surface_create_cairo_surface (WakefieldSurface *surface,
       cr_surface = cairo_image_surface_create (format, width, height);
       cr_pixels = cairo_image_surface_get_data (cr_surface);
       cr_stride = cairo_image_surface_get_stride (cr_surface);
-      wl_shm_buffer_begin_access (shm_buffer);
       for (y = 0; y < height; y++)
         {
           memcpy (cr_pixels + y * cr_stride,
@@ -381,6 +386,8 @@ wl_surface_commit (struct wl_client *client,
   if (surface->current.buffer)
     {
       shm_buffer = wl_shm_buffer_get (surface->current.buffer);
+      wl_shm_buffer_begin_access (shm_buffer);
+
       if (shm_buffer)
         {
           rect.width = wl_shm_buffer_get_width (shm_buffer) / surface->current.scale;
@@ -388,12 +395,16 @@ wl_surface_commit (struct wl_client *client,
 
           clear_region = cairo_region_create_rectangle (&rect);
         }
+
+      wl_shm_buffer_end_access (shm_buffer);
       wl_buffer_send_release (surface->current.buffer);
     }
 
   if (surface->pending.buffer)
     {
       shm_buffer = wl_shm_buffer_get (surface->pending.buffer);
+      wl_shm_buffer_begin_access (shm_buffer);
+
       new_width = wl_shm_buffer_get_width (shm_buffer) / surface->pending.scale;
       new_height = wl_shm_buffer_get_height (shm_buffer) / surface->pending.scale;
       if (clear_region && shm_buffer)
@@ -403,7 +414,9 @@ wl_surface_commit (struct wl_client *client,
 
           cairo_region_subtract_rectangle (clear_region, &rect);
         }
+
       surface->current.buffer = surface->pending.buffer;
+      wl_shm_buffer_end_access (shm_buffer);
     }
 
   /* XXX: Should we reallocate / redraw the entire region if the buffer
