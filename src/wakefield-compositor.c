@@ -1450,7 +1450,7 @@ wl_region_destructor (struct wl_resource *resource)
   struct WakefieldRegion *region = wl_resource_get_user_data (resource);
 
   cairo_region_destroy (region->region);
-  g_slice_free (struct WakefieldRegion, region);
+  g_free (region);
 }
 
 static void
@@ -1458,7 +1458,7 @@ wl_compositor_create_region (struct wl_client *client,
                              struct wl_resource *compositor_resource,
                              uint32_t id)
 {
-  struct WakefieldRegion *region = g_slice_new0 (struct WakefieldRegion);
+  struct WakefieldRegion *region = g_new0 (struct WakefieldRegion, 1);
 
   region->resource = wl_resource_create (client, &wl_region_interface, wl_resource_get_version (compositor_resource), id);
   wl_resource_set_implementation (region->resource, &region_interface, region, wl_region_destructor);

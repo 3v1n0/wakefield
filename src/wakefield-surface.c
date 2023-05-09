@@ -658,7 +658,7 @@ xdg_surface_finalize (struct wl_resource *xdg_resource)
   if (xdg_surface->surface)
     xdg_surface->surface->xdg_surface = NULL;
 
-  g_slice_free (struct WakefieldXdgSurface, xdg_surface);
+  g_free (xdg_surface);
 }
 
 static void
@@ -978,7 +978,7 @@ wakefield_xdg_surface_new (struct wl_client *client,
   WakefieldSurface *surface = wl_resource_get_user_data (surface_resource);
   struct WakefieldXdgSurface *xdg_surface;
 
-  xdg_surface = g_slice_new0 (struct WakefieldXdgSurface);
+  xdg_surface = g_new0 (struct WakefieldXdgSurface, 1);
   xdg_surface->surface = surface;
 
   surface->xdg_surface = xdg_surface;
@@ -1015,7 +1015,7 @@ xdg_popup_finalize (struct wl_resource *xdg_popup_resource)
 
   gtk_widget_destroy (xdg_popup->toplevel);
 
-  g_slice_free (struct WakefieldXdgPopup, xdg_popup);
+  g_free (xdg_popup);
 }
 
 static gboolean
@@ -1165,7 +1165,7 @@ wakefield_xdg_popup_new (WakefieldCompositor *compositor,
   wakefield_surface_set_role (surface_resource,
                               WAKEFIELD_SURFACE_ROLE_XDG_POPUP);
 
-  xdg_popup = g_slice_new0 (struct WakefieldXdgPopup);
+  xdg_popup = g_new0 (struct WakefieldXdgPopup, 1);
   xdg_popup->surface = surface;
   xdg_popup->parent_surface = parent_surface;
 
