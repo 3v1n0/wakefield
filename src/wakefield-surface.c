@@ -397,7 +397,6 @@ wl_surface_commit (struct wl_client *client,
         }
 
       wl_shm_buffer_end_access (shm_buffer);
-      wl_buffer_send_release (surface->current.buffer);
     }
 
   if (surface->pending.buffer)
@@ -415,6 +414,7 @@ wl_surface_commit (struct wl_client *client,
           cairo_region_subtract_rectangle (clear_region, &rect);
         }
 
+      g_clear_pointer (&surface->current.buffer, wl_buffer_send_release);
       surface->current.buffer = surface->pending.buffer;
       wl_shm_buffer_end_access (shm_buffer);
     }
