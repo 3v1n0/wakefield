@@ -415,7 +415,7 @@ wl_surface_commit (struct wl_client *client,
         }
 
       g_clear_pointer (&surface->current.buffer, wl_buffer_send_release);
-      surface->current.buffer = surface->pending.buffer;
+      surface->current.buffer = g_steal_pointer (&surface->pending.buffer);
       wl_shm_buffer_end_access (shm_buffer);
     }
 
@@ -481,7 +481,6 @@ wl_surface_commit (struct wl_client *client,
   /* XXX: Stop leak when we start using the input region. */
   surface->pending.input_region = NULL;
 
-  surface->pending.buffer = NULL;
   surface->pending.scale = 1;
 
   if (!surface->mapped)
