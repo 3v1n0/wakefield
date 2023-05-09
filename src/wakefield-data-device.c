@@ -25,18 +25,20 @@
 #include "wakefield-private.h"
 #include "xdg-shell-server-protocol.h"
 
-struct WakefieldDataDevice {
+typedef struct _WakefieldDataDevice
+{
   WakefieldCompositor *compositor;
 
   struct wl_list data_source_resources;
   struct wl_list manager_resources;
   struct wl_list device_resources;
-};
+} WakefieldDataDevice;
 
-struct WakefieldDataSource {
-  struct WakefieldDataDevice *data_device;
+typedef struct _WakefieldDataSource
+{
+  WakefieldDataDevice *data_device;
   struct wl_resource *resource;
-};
+} WakefieldDataSource;
 
 static void
 data_source_offer (struct wl_client *client,
@@ -72,7 +74,7 @@ static struct wl_data_source_interface data_source_implementation = {
 static void
 data_source_finalize (struct wl_resource *resource)
 {
-  struct WakefieldDataSource *data_source = wl_resource_get_user_data (resource);
+  WakefieldDataSource *data_source = wl_resource_get_user_data (resource);
 
   wl_list_remove (wl_resource_get_link (resource));
   g_free (data_source);
@@ -84,10 +86,10 @@ create_data_source (struct wl_client *client,
                     struct wl_resource *manager_resource,
                     uint32_t id)
 {
-  struct WakefieldDataDevice *data_device = wl_resource_get_user_data (manager_resource);
-  struct WakefieldDataSource *data_source;
+  WakefieldDataDevice *data_device = wl_resource_get_user_data (manager_resource);
+  WakefieldDataSource *data_source;
 
-  data_source = g_new0 (struct WakefieldDataSource, 1);
+  data_source = g_new0 (WakefieldDataSource, 1);
   data_source->data_device = data_device;
 
   data_source->resource = wl_resource_create (client, &wl_data_source_interface, 1, id);
@@ -144,7 +146,7 @@ get_data_device (struct wl_client *client,
                  uint32_t id,
                  struct wl_resource *seat_resource)
 {
-  struct WakefieldDataDevice *data_device = wl_resource_get_user_data (manager_resource);
+  WakefieldDataDevice *data_device = wl_resource_get_user_data (manager_resource);
   struct wl_resource *device_resource;
 
   device_resource = wl_resource_create (client, &wl_data_device_interface,
@@ -178,7 +180,7 @@ bind_data_device_manager (struct wl_client *client,
                           uint32_t version,
                           uint32_t id)
 {
-  struct WakefieldDataDevice *data_device = data;
+  WakefieldDataDevice *data_device = data;
   struct wl_resource *manager_resource;
 
   manager_resource = wl_resource_create (client, &wl_data_device_manager_interface, version, id);
@@ -195,12 +197,12 @@ bind_data_device_manager (struct wl_client *client,
 
 #define DATA_DEVICE_MANAGER_VERSION 2
 
-struct WakefieldDataDevice *
+WakefieldDataDevice *
 wakefield_data_device_new (WakefieldCompositor *compositor)
 {
-  struct WakefieldDataDevice *data_device;
+  WakefieldDataDevice *data_device;
 
-  data_device = g_new0 (struct WakefieldDataDevice, 1);
+  data_device = g_new0 (WakefieldDataDevice, 1);
   data_device->compositor = compositor;
 
   wl_list_init (&data_device->manager_resources);

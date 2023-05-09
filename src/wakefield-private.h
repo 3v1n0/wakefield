@@ -26,6 +26,7 @@
 #include <wayland-server.h>
 
 typedef struct _WakefieldSurface WakefieldSurface;
+typedef struct _WakefieldDataDevice WakefieldDataDevice;
 
 struct wl_display * wakefield_compositor_get_display            (WakefieldCompositor *compositor);
 void                wakefield_compositor_surface_unmapped       (WakefieldCompositor *compositor,
@@ -104,4 +105,4 @@ void                wakefield_xdg_popup_close      (struct wl_resource *xdg_popu
 
 cairo_region_t *wakefield_region_get_region (struct wl_resource *region_resource);
 
-struct WakefieldDataDevice *wakefield_data_device_new (WakefieldCompositor *compositor);
+WakefieldDataDevice *wakefield_data_device_new (WakefieldCompositor *compositor);

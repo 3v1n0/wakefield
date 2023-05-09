@@ -48,7 +48,7 @@
 #include <X11/Xlib-xcb.h>
 #endif
 
-struct WakefieldPointer
+typedef struct _WakefieldPointer
 {
   struct wl_list resource_list;
 
@@ -76,9 +76,9 @@ struct WakefieldPointer
   struct wl_resource *grab_popup_surface;
   guint32 grab_time;
   guint32 grab_serial;
-};
+} WakefieldPointer;
 
-struct WakefieldKeyboard
+typedef struct _WakefieldKeyboard
 {
   struct wl_list resource_list;
   struct wl_resource *focus;
@@ -103,24 +103,24 @@ struct WakefieldKeyboard
   guint32 mods_latched;
   guint32 mods_locked;
   guint32 group;
-};
+} WakefieldKeyboard;
 
-struct WakefieldOutput
+typedef struct _WakefieldOutput
 {
   struct wl_list resource_list;
-};
+} WakefieldOutput;
 
-struct WakefieldSeat
+typedef struct _WakefieldSeat
 {
-  struct WakefieldPointer pointer;
-  struct WakefieldKeyboard keyboard;
-};
+  WakefieldPointer pointer;
+  WakefieldKeyboard keyboard;
+} WakefieldSeat;
 
-struct WakefieldRegion
+typedef struct _WakefieldRegion
 {
   struct wl_resource *resource;
   cairo_region_t *region;
-};
+} WakefieldRegion;
 
 typedef struct _WakefieldCompositorPrivate
 {
@@ -132,9 +132,9 @@ typedef struct _WakefieldCompositorPrivate
   struct wl_list xdg_surfaces;
   struct wl_list xdg_popups;
   struct wl_list shell_resources;
-  struct WakefieldSeat seat;
-  struct WakefieldOutput output;
-  struct WakefieldDataDevice *data_device;
+  WakefieldSeat seat;
+  WakefieldOutput output;
+  WakefieldDataDevice *data_device;
 } WakefieldCompositorPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE (WakefieldCompositor, wakefield_compositor, GTK_TYPE_WIDGET);
@@ -145,7 +145,7 @@ G_DEFINE_TYPE_WITH_PRIVATE (WakefieldCompositor, wakefield_compositor, GTK_TYPE_
 	     resource = wl_resource_from_link(wl_resource_get_link(resource)->prev))
 
 static void
-unset_cursor_surface (struct WakefieldPointer *pointer,
+unset_cursor_surface (WakefieldPointer *pointer,
                       WakefieldSurface *cursor_surface);
 
 static void
@@ -375,7 +375,7 @@ static void
 send_enter (WakefieldCompositor *compositor, struct wl_resource  *surface, double x, double y)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *pointer_resource;
 
   pointer_resource = wakefield_compositor_get_pointer_for_client (compositor,
@@ -393,7 +393,7 @@ static void
 send_leave (WakefieldCompositor *compositor, struct wl_resource  *surface)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *pointer_resource;
 
   pointer_resource = wakefield_compositor_get_pointer_for_client (compositor,
@@ -427,7 +427,7 @@ static void
 wakefield_compositor_clear_grab (WakefieldCompositor *compositor)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
 
   if (pointer->grab_popup_surface)
     gdk_device_ungrab (pointer->grab_device, GDK_CURRENT_TIME);
@@ -454,7 +454,7 @@ static gboolean
 should_send_pointer_event (WakefieldCompositor *compositor)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
 
   return pointer->current_surface != NULL;
 }
@@ -465,7 +465,7 @@ ensure_surface_entered (WakefieldCompositor *compositor,
                         double x, double y)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
 
   if (pointer->current_surface != surface)
     {
@@ -484,7 +484,7 @@ wakefield_compositor_send_button (WakefieldCompositor *compositor,
                                   GdkEventButton *event)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *pointer_resource, *xdg_popup_resource;
   guint32 button;
 
@@ -643,7 +643,7 @@ wakefield_compositor_send_enter (WakefieldCompositor *compositor,
                                  GdkEventCrossing *event)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   gboolean has_implicit_grab;
 
   if (surface == NULL)
@@ -668,7 +668,7 @@ wakefield_compositor_send_leave (WakefieldCompositor *compositor,
                                  GdkEventCrossing *event)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   gboolean has_implicit_grab;
 
   if (surface == NULL)
@@ -697,7 +697,7 @@ wakefield_compositor_send_keyboard_enter (WakefieldCompositor *compositor,
                                           struct wl_resource *surface)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   struct wl_resource *keyboard_resource;
   struct wl_array keys;
 
@@ -727,7 +727,7 @@ wakefield_compositor_send_keyboard_leave (WakefieldCompositor *compositor,
                                           struct wl_resource *surface)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   struct wl_resource *keyboard_resource;
   uint32_t serial = wl_display_next_serial (priv->wl_display);
 
@@ -782,7 +782,7 @@ wakefield_compositor_button_press_event (GtkWidget      *widget,
   WakefieldCompositor *compositor = WAKEFIELD_COMPOSITOR (widget);
   WakefieldCompositorPrivate *priv =
     wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *surface;
 
   pointer->serial = wl_display_next_serial (priv->wl_display);
@@ -802,7 +802,7 @@ wakefield_compositor_button_release_event (GtkWidget      *widget,
   WakefieldCompositor *compositor = WAKEFIELD_COMPOSITOR (widget);
   WakefieldCompositorPrivate *priv =
     wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *surface;
 
   pointer->serial = wl_display_next_serial (priv->wl_display);
@@ -897,7 +897,7 @@ wakefield_compositor_focus_out_event (GtkWidget     *widget,
 {
   WakefieldCompositor *compositor = WAKEFIELD_COMPOSITOR (widget);
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
 
 
   if (keyboard->focus && wakefield_surface_get_xdg_surface (keyboard->focus))
@@ -910,7 +910,7 @@ static void
 update_modifier_state (WakefieldCompositor *compositor, struct wl_resource *keyboard_resource, GdkEventKey *event)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   guint32 old_mods_depressed = keyboard->mods_depressed;
   guint32 old_mods_latched = keyboard->mods_latched;
   guint32 old_mods_locked = keyboard->mods_locked;
@@ -957,7 +957,7 @@ wakefield_compositor_key_press_event (GtkWidget *widget,
 {
   WakefieldCompositor *compositor = WAKEFIELD_COMPOSITOR (widget);
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   struct wl_resource *keyboard_resource;
   uint32_t serial = wl_display_next_serial (priv->wl_display);
 
@@ -980,7 +980,7 @@ wakefield_compositor_key_release_event (GtkWidget     *widget,
 {
   WakefieldCompositor *compositor = WAKEFIELD_COMPOSITOR (widget);
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   struct wl_resource *keyboard_resource;
   uint32_t serial = wl_display_next_serial (priv->wl_display);
 
@@ -1010,7 +1010,7 @@ unbind_resource (struct wl_resource *resource)
 }
 
 static void
-unset_cursor_surface (struct WakefieldPointer *pointer,
+unset_cursor_surface (WakefieldPointer *pointer,
                       WakefieldSurface *cursor_surface)
 {
   g_signal_handler_disconnect (cursor_surface,
@@ -1027,7 +1027,7 @@ pointer_cursor_surface_committed (WakefieldSurface *surface,
   WakefieldCompositor *compositor = wakefield_surface_get_compositor (surface);
   WakefieldCompositorPrivate *priv =
     wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   cairo_surface_t *cursor_surface;
   int w, h;
 
@@ -1055,7 +1055,7 @@ pointer_set_cursor (struct wl_client *client,
                     struct wl_resource *surface_resource,
                     int32_t x, int32_t y)
 {
-  struct WakefieldPointer *pointer = wl_resource_get_user_data (resource);
+  WakefieldPointer *pointer = wl_resource_get_user_data (resource);
   WakefieldSurface *cursor_surface = NULL;
   GdkWindow *window;
 
@@ -1119,8 +1119,8 @@ seat_get_pointer (struct wl_client    *client,
                   struct wl_resource  *seat_resource,
                   uint32_t             id)
 {
-  struct WakefieldSeat *seat = wl_resource_get_user_data (seat_resource);
-  struct WakefieldPointer *pointer = &seat->pointer;
+  WakefieldSeat *seat = wl_resource_get_user_data (seat_resource);
+  WakefieldPointer *pointer = &seat->pointer;
   struct wl_resource *cr;
 
   cr = wl_resource_create (client, &wl_pointer_interface, wl_resource_get_version (seat_resource), id);
@@ -1129,7 +1129,7 @@ seat_get_pointer (struct wl_client    *client,
 }
 
 static void
-wakefield_pointer_init (struct WakefieldPointer *pointer)
+wakefield_pointer_init (WakefieldPointer *pointer)
 {
   wl_list_init (&pointer->resource_list);
   pointer->cursor_surface = NULL;
@@ -1144,8 +1144,8 @@ seat_get_keyboard (struct wl_client    *client,
                    struct wl_resource  *seat_resource,
                    uint32_t             id)
 {
-  struct WakefieldSeat *seat = wl_resource_get_user_data (seat_resource);
-  struct WakefieldKeyboard *keyboard = &seat->keyboard;
+  WakefieldSeat *seat = wl_resource_get_user_data (seat_resource);
+  WakefieldKeyboard *keyboard = &seat->keyboard;
   struct wl_resource *cr;
 
   cr = wl_resource_create (client, &wl_keyboard_interface, wl_resource_get_version (seat_resource), id);
@@ -1165,7 +1165,7 @@ seat_get_keyboard (struct wl_client    *client,
 
 static struct xkb_keymap *
 get_keymap (WakefieldCompositor *compositor,
-            struct WakefieldKeyboard *keyboard)
+            WakefieldKeyboard *keyboard)
 {
   GdkDisplay *display = gtk_widget_get_display (GTK_WIDGET (compositor));
 
@@ -1239,7 +1239,7 @@ write_all (int           fd,
 
 static void
 update_keymap (WakefieldCompositor *compositor,
-               struct WakefieldKeyboard *keyboard)
+               WakefieldKeyboard *keyboard)
 {
   struct wl_resource *keyboard_resource;
   struct xkb_keymap *keymap;
@@ -1299,7 +1299,7 @@ update_keymap (WakefieldCompositor *compositor,
 
 static void
 wakefield_keyboard_init (WakefieldCompositor *compositor,
-                         struct WakefieldKeyboard *keyboard)
+                         WakefieldKeyboard *keyboard)
 {
   GdkDisplay *display = gtk_widget_get_display (GTK_WIDGET (compositor));
 
@@ -1358,7 +1358,7 @@ bind_seat (struct wl_client *client,
 
 static void
 wakefield_seat_init (WakefieldCompositor *compositor,
-                     struct WakefieldSeat *seat,
+                     WakefieldSeat *seat,
                      struct wl_display    *wl_display)
 {
   wakefield_pointer_init (&seat->pointer);
@@ -1375,7 +1375,7 @@ bind_output (struct wl_client *client,
 {
   WakefieldCompositor *compositor = data;
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldOutput *output = &priv->output;
+  WakefieldOutput *output = &priv->output;
   struct wl_resource *cr;
 
   cr = wl_resource_create (client, &wl_output_interface, version, id);
@@ -1408,7 +1408,7 @@ static GSource * wayland_event_source_new (struct wl_display *display);
 cairo_region_t *
 wakefield_region_get_region (struct wl_resource *region_resource)
 {
-  struct WakefieldRegion *region = wl_resource_get_user_data (region_resource);
+  WakefieldRegion *region = wl_resource_get_user_data (region_resource);
   return cairo_region_copy (region->region);
 }
 
@@ -1420,7 +1420,7 @@ wl_region_add (struct wl_client *client,
                gint32 width,
                gint32 height)
 {
-  struct WakefieldRegion *region = wl_resource_get_user_data (resource);
+  WakefieldRegion *region = wl_resource_get_user_data (resource);
   cairo_rectangle_int_t rectangle = { x, y, width, height };
   cairo_region_union_rectangle (region->region, &rectangle);
 }
@@ -1433,7 +1433,7 @@ wl_region_subtract (struct wl_client *client,
                     gint32 width,
                     gint32 height)
 {
-  struct WakefieldRegion *region = wl_resource_get_user_data (resource);
+  WakefieldRegion *region = wl_resource_get_user_data (resource);
   cairo_rectangle_int_t rectangle = { x, y, width, height };
   cairo_region_subtract_rectangle (region->region, &rectangle);
 }
@@ -1447,7 +1447,7 @@ static const struct wl_region_interface region_interface = {
 static void
 wl_region_destructor (struct wl_resource *resource)
 {
-  struct WakefieldRegion *region = wl_resource_get_user_data (resource);
+  WakefieldRegion *region = wl_resource_get_user_data (resource);
 
   cairo_region_destroy (region->region);
   g_free (region);
@@ -1458,7 +1458,7 @@ wl_compositor_create_region (struct wl_client *client,
                              struct wl_resource *compositor_resource,
                              uint32_t id)
 {
-  struct WakefieldRegion *region = g_new0 (struct WakefieldRegion, 1);
+  WakefieldRegion *region = g_new0 (WakefieldRegion, 1);
 
   region->resource = wl_resource_create (client, &wl_region_interface, wl_resource_get_version (compositor_resource), id);
   wl_resource_set_implementation (region->resource, &region_interface, region, wl_region_destructor);
@@ -1471,8 +1471,8 @@ wakefield_compositor_surface_unmapped (WakefieldCompositor *compositor,
                                        struct wl_resource  *surface)
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
   struct wl_resource *xdg_surface = wakefield_surface_get_xdg_surface (surface);
 
   if (keyboard->focus == surface)
@@ -1527,7 +1527,7 @@ wakefield_compositor_surface_mapped (WakefieldCompositor *compositor,
 {
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
   struct wl_resource *xdg_surface = wakefield_surface_get_xdg_surface  (surface);
-  struct WakefieldKeyboard *keyboard = &priv->seat.keyboard;
+  WakefieldKeyboard *keyboard = &priv->seat.keyboard;
 
   if (xdg_surface && gtk_widget_get_realized (GTK_WIDGET (compositor)))
     {
@@ -1614,7 +1614,7 @@ xdg_get_xdg_popup (struct wl_client *client,
 {
   WakefieldCompositor *compositor = wl_resource_get_user_data (shell_resource);
   WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
-  struct WakefieldPointer *pointer = &priv->seat.pointer;
+  WakefieldPointer *pointer = &priv->seat.pointer;
   struct wl_resource *xdg_popup, *output_resource;
   WakefieldSurfaceRole role, parent_role;
 
