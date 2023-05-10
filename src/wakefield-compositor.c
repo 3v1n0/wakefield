@@ -277,7 +277,7 @@ send_xdg_configure_request (WakefieldCompositor *compositor,
 
   wl_array_init(&states);
   s = wl_array_add(&states, sizeof *s);
-  *s = XDG_TOPLEVEL_STATE_FULLSCREEN;
+  *s = XDG_TOPLEVEL_STATE_MAXIMIZED;
   if ((gtk_widget_get_state_flags (GTK_WIDGET (compositor)) & GTK_STATE_FLAG_BACKDROP) == 0)
     {
       s = wl_array_add(&states, sizeof *s);
