@@ -475,11 +475,6 @@ wl_surface_commit (struct wl_client *client,
 
       cairo_region_translate (surface->damage, allocation.x, allocation.y);
       gtk_widget_queue_draw_region (GTK_WIDGET (surface->compositor), surface->damage);
-
-      if (surface->xdg_surface->window)
-        gdk_window_resize (surface->xdg_surface->window,
-                           new_width,
-                           new_height);
     }
   else if (surface->xdg_popup && new_width > 0 && new_height > 0)
     {
@@ -687,6 +682,10 @@ xdg_surface_set_window_geometry (struct wl_client *client,
                                  int32_t width,
                                  int32_t height)
 {
+  WakefieldXdgSurface *xdg_surface = wl_resource_get_user_data (resource);
+
+  if (xdg_surface->window)
+    gdk_window_move_resize (xdg_surface->window, x, y, width, height);
 }
 
 static void
