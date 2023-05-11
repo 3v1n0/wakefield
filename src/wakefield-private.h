@@ -34,7 +34,11 @@ void                wakefield_compositor_surface_unmapped       (WakefieldCompos
 void                wakefield_compositor_surface_mapped         (WakefieldCompositor *compositor,
                                                                  struct wl_resource  *surface);
 void                wakefield_compositor_send_configure         (WakefieldCompositor *compositor,
-                                                                 struct wl_resource  *surface);
+                                                                 struct wl_resource  *surfaces);
+gboolean            wakefield_compositor_grab_pointer           (WakefieldCompositor *compositor,
+                                                                 struct wl_resource  *parent_surface,
+                                                                 struct wl_resource  *surface,
+                                                                 uint32_t             serial);
 void                wakefield_compositor_send_enter             (WakefieldCompositor *compositor,
                                                                  struct wl_resource  *surface,
                                                                  GdkEventCrossing     *event);
@@ -99,8 +103,12 @@ struct wl_resource *wakefield_xdg_popup_new (WakefieldCompositor *compositor,
                                              guint32 serial,
                                              gint32 x, gint32 y);
 
-guint32             wakefield_xdg_popup_get_serial (struct wl_resource *xdg_popup_resource);
-GdkWindow *         wakefield_xdg_popup_get_window (struct wl_resource *xdg_popup_resource);
+struct wl_resource *wakefield_xdg_positioner_new (struct wl_client *client,
+                                                  struct wl_resource *resource,
+                                                  uint32_t id);
+
+void                wakefield_xdg_popup_get_allocation (struct wl_resource *xdg_popup_resource,
+                                                        GdkRectangle *allocation);
 void                wakefield_xdg_popup_close      (struct wl_resource *xdg_popup_resource);
 
 cairo_region_t *wakefield_region_get_region (struct wl_resource *region_resource);

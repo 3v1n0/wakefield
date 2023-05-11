@@ -75,7 +75,6 @@ typedef struct _WakefieldPointer
   struct wl_resource *grab_initial_surface;
   struct wl_resource *grab_popup_surface;
   guint32 grab_time;
-  guint32 grab_serial;
 } WakefieldPointer;
 
 typedef struct _WakefieldKeyboard
@@ -252,19 +251,19 @@ refresh_output (WakefieldCompositor *compositor,
   wl_output_send_done (output);
 }
 
-static void
-send_xdg_configure_request (WakefieldCompositor *compositor,
-                            struct wl_resource *xdg_surface)
+static gboolean
+send_xdg_toplevel_configure (WakefieldCompositor *compositor,
+                             struct wl_resource  *xdg_surface)
 {
-  WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
   GtkAllocation allocation;
   struct wl_resource *xdg_toplevel;
   struct wl_array states;
   uint32_t *s;
 
   xdg_toplevel = wakefield_xdg_surface_get_xdg_toplevel (xdg_surface);
+
   if (!xdg_toplevel)
-    return;
+    return FALSE;
 
   gtk_widget_get_allocation (GTK_WIDGET (compositor), &allocation);
 
@@ -286,6 +285,54 @@ send_xdg_configure_request (WakefieldCompositor *compositor,
   xdg_toplevel_send_configure (xdg_toplevel, allocation.width, allocation.height,
                                &states);
   wl_array_release(&states);
+
+  return TRUE;
+}
+
+static gboolean
+send_xdg_popup_configure (WakefieldCompositor *compositor,
+                          struct wl_resource  *xdg_surface)
+{
+  struct wl_resource *xdg_popup;
+  GdkRectangle allocation;
+
+  xdg_popup = wakefield_xdg_surface_get_xdg_popup (xdg_surface);
+
+  if (!xdg_popup)
+    return FALSE;
+
+  wakefield_xdg_popup_get_allocation (xdg_popup, &allocation);
+  xdg_popup_send_configure (xdg_popup, allocation.x, allocation.y,
+                            allocation.width, allocation.height);
+
+  return TRUE;
+}
+
+static void
+send_xdg_configure_request (WakefieldCompositor *compositor,
+                            struct wl_resource  *xdg_surface)
+{
+  WakefieldCompositorPrivate *priv =
+    wakefield_compositor_get_instance_private (compositor);
+  struct wl_resource *surface_resource;
+
+  surface_resource = wakefield_xdg_surface_get_surface_resource (xdg_surface);
+
+  switch (wakefield_surface_get_role (surface_resource))
+    {
+      case WAKEFIELD_SURFACE_ROLE_NONE:
+        return;
+      case WAKEFIELD_SURFACE_ROLE_POINTER_CURSOR:
+        break;
+      case WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL:
+        if (!send_xdg_toplevel_configure (compositor, xdg_surface))
+          return;
+        break;
+      case WAKEFIELD_SURFACE_ROLE_XDG_POPUP:
+        if (!send_xdg_popup_configure (compositor, xdg_surface))
+          return;
+        break;
+    }
 
   xdg_surface_send_configure (xdg_surface,
                               wl_display_next_serial (priv->wl_display));
@@ -527,8 +574,6 @@ wakefield_compositor_send_button (WakefieldCompositor *compositor,
                                 (event->type == GDK_BUTTON_PRESS ? 1 : 0));
     }
 
-  if (pointer->button_count == 1 && event->type == GDK_BUTTON_PRESS)
-    pointer->grab_serial = pointer->serial;
 
   if (pointer->button_count == 0 && event->type == GDK_BUTTON_RELEASE)
     {
@@ -1496,7 +1541,6 @@ wakefield_compositor_surface_unmapped (WakefieldCompositor *compositor,
           pointer->grab_button != 0)
         wakefield_compositor_clear_grab (compositor);
 
-      pointer->grab_serial = 0;
       pointer->grab_device = NULL;
       pointer->grab_window = NULL;
       pointer->grab_initial_surface = NULL;
@@ -1601,97 +1645,50 @@ xdg_get_xdg_surface (struct wl_client *client,
 
   send_xdg_configure_request (compositor, xdg_surface);
 }
-
-static void
-xdg_get_xdg_popup (struct wl_client *client,
-                   struct wl_resource *shell_resource,
-                   uint32_t id,
-                   struct wl_resource *surface_resource,
-                   struct wl_resource *parent_resource,
-                   struct wl_resource *seat_resource,
-                   uint32_t serial,
-                   int32_t x, int32_t y)
+gboolean
+wakefield_compositor_grab_pointer (WakefieldCompositor *compositor,
+                                   struct wl_resource  *parent_xdg_surface,
+                                   struct wl_resource  *xdg_surface,
+                                   uint32_t             serial)
 {
-  WakefieldCompositor *compositor = wl_resource_get_user_data (shell_resource);
-  WakefieldCompositorPrivate *priv = wakefield_compositor_get_instance_private (compositor);
+  WakefieldCompositorPrivate *priv =
+    wakefield_compositor_get_instance_private (compositor);
   WakefieldPointer *pointer = &priv->seat.pointer;
-  struct wl_resource *xdg_popup, *output_resource;
-  WakefieldSurfaceRole role, parent_role;
+  struct wl_resource *parent_surface_resource;
+  struct wl_resource *surface_resource;
 
-  if (surface_resource == NULL)
+  if (pointer->serial != serial)
+      return FALSE;
+
+  surface_resource = wakefield_xdg_surface_get_surface_resource (xdg_surface);
+
+  if (pointer->grab_popup_surface &&
+      pointer->grab_popup_surface != surface_resource)
     {
-      wl_resource_post_error (shell_resource,
-                              WL_DISPLAY_ERROR_INVALID_OBJECT,
-                              "xdg_shell::get_xdg_popup requires a surface");
-      return;
+      struct wl_resource *current_xdg_surface;
+
+      current_xdg_surface =
+        wakefield_surface_get_xdg_surface (pointer->grab_popup_surface);
+      wakefield_xdg_popup_close (
+        wakefield_xdg_surface_get_xdg_popup (current_xdg_surface));
     }
 
-  role = wakefield_surface_get_role (surface_resource);
-  if (role)
-    {
-      wl_resource_post_error (shell_resource, XDG_WM_BASE_ERROR_ROLE,
-                              "This wl_surface already has a role");
-      return;
-    }
+  parent_surface_resource =
+    wakefield_xdg_surface_get_surface_resource (parent_xdg_surface);
+  pointer->grab_popup_surface = surface_resource;
 
-  if (parent_resource == NULL)
-    {
-      wl_resource_post_error (shell_resource,
-                              WL_DISPLAY_ERROR_INVALID_OBJECT,
-                              "xdg_shell::get_xdg_popup requires a parent shell surface");
-      return;
-    }
-
-  parent_role = wakefield_surface_get_role (parent_resource);
-
-  if (parent_role != WAKEFIELD_SURFACE_ROLE_XDG_TOPLEVEL &&
-      parent_role != WAKEFIELD_SURFACE_ROLE_XDG_POPUP)
-    {
-      wl_resource_post_error (shell_resource,
-                              XDG_WM_BASE_ERROR_INVALID_POPUP_PARENT,
-                              "xdg_popup parent was invalid");
-      return;
-    }
-
-  if (!wl_list_empty (&priv->xdg_popups))
-    {
-      struct wl_resource *top_xdg_popup = wl_resource_from_link (priv->xdg_popups.next);
-      if (parent_resource != wakefield_xdg_surface_get_surface_resource (top_xdg_popup))
-        {
-          wl_resource_post_error (shell_resource,
-                                  XDG_WM_BASE_ERROR_NOT_THE_TOPMOST_POPUP,
-                                  "xdg_popup was not created on the "
-                                  "topmost popup");
-          return;
-        }
-    }
-
-  xdg_popup = wakefield_xdg_popup_new (compositor, client, shell_resource, id, surface_resource, parent_resource, serial, x, y);
-  wl_list_insert (&priv->xdg_popups, wl_resource_get_link (xdg_popup));
-
-  output_resource = wl_resource_find_for_client (&priv->output.resource_list, client);
-  wl_surface_send_enter (surface_resource, output_resource);
-
-  if (wakefield_xdg_popup_get_serial (xdg_popup) == pointer->grab_serial)
-    {
-      pointer->grab_popup_surface = surface_resource;
-      gdk_device_grab (pointer->grab_device,
-                       wakefield_surface_get_window (parent_resource),
-                       GDK_OWNERSHIP_NONE,
-                       TRUE,
-                       GDK_POINTER_MOTION_MASK |
-                       GDK_BUTTON_PRESS_MASK |
-                       GDK_BUTTON_RELEASE_MASK |
-                       GDK_SCROLL_MASK |
-                       GDK_ENTER_NOTIFY_MASK |
-                       GDK_LEAVE_NOTIFY_MASK,
-                       NULL,
-                       pointer->grab_time);
-    }
-  else
-    {
-      wakefield_xdg_popup_close (xdg_popup);
-    }
+  return gdk_device_grab (pointer->grab_device,
+                          wakefield_surface_get_window (parent_surface_resource),
+                          GDK_OWNERSHIP_NONE,
+                          TRUE,
+                          GDK_POINTER_MOTION_MASK |
+                          GDK_BUTTON_PRESS_MASK |
+                          GDK_BUTTON_RELEASE_MASK |
+                          GDK_SCROLL_MASK |
+                          GDK_ENTER_NOTIFY_MASK |
+                          GDK_LEAVE_NOTIFY_MASK,
+                          NULL,
+                          pointer->grab_time) == GDK_GRAB_SUCCESS;
 }
 
 static void
@@ -1708,8 +1705,11 @@ xdg_shell_create_positioner (struct wl_client *client,
                              struct wl_resource *resource,
                              uint32_t id)
 {
+  if (wakefield_xdg_positioner_new (client, resource, id))
+    return;
+
   wl_resource_post_error (resource, 1,
-                          "xdg-shell::create_positioner not implemented yet.");
+                          "xdg-shell::create_positioner failed.");
 }
 
 static const struct xdg_wm_base_interface xdg_implementation = {
