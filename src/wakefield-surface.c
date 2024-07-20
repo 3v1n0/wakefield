@@ -646,8 +646,9 @@ wl_surface_damage_buffer (struct wl_client *client,
                           int32_t width,
                           int32_t height)
 {
-  wl_resource_post_error (resource, 1,
-                          "xdg-surface::damage_buffer not implemented yet.");
+  WakefieldSurface *surface = wl_resource_get_user_data (resource);
+  cairo_rectangle_int_t rectangle = { x, y, width, height };
+  cairo_region_union_rectangle (surface->damage, &rectangle);
 }
 
 static void
